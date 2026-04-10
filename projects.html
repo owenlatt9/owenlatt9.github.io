@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projects | Owen Latt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="projects.html" class="active">Projects</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h1>Projects</h1>
+      <p>A collection of things I've built</p>
+    </div>
+
+    <div class="projects-grid" id="all-projects">
+      <!-- Projects loaded from projects.js -->
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2026 Owen Latt</p>
+  </footer>
+
+  <script src="projects.js"></script>
+  <script>
+    renderProjects('all-projects', false);
+  </script>
+</body>
+</html>

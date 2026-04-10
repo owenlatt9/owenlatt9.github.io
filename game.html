@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evade | Owen Latt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #gameCanvas {
+      display: block;
+      background: #000;
+    }
+
+    #startScreen, #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10;
+    }
+
+    #gameOverScreen {
+      display: none;
+    }
+
+    h1 {
+      color: white;
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .game-over-title {
+      color: #ff4444;
+      font-size: 56px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .final-score {
+      color: white;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .final-high-score {
+      color: #888;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    .game-btn {
+      padding: 14px 40px;
+      font-size: 20px;
+      font-weight: 600;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .game-btn:hover {
+      transform: scale(1.05);
+      background: #eee;
+    }
+
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      z-index: 5;
+    }
+
+    #highScore {
+      position: absolute;
+      top: 50px;
+      left: 20px;
+      color: #888;
+      font-size: 16px;
+      font-weight: 500;
+      z-index: 5;
+    }
+
+    .new-high-score {
+      color: #FFB81C;
+      font-size: 24px;
+      margin-bottom: 10px;
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+
+    #backLink {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #888;
+      font-size: 14px;
+      text-decoration: none;
+      z-index: 5;
+      transition: color 0.2s;
+    }
+
+    #backLink:hover {
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="score">Score: 0</div>
+    <div id="highScore">High Score: 0</div>
+    <a href="index.html" id="backLink">← Back to site</a>
+
+    <!-- Start Screen -->
+    <div id="startScreen">
+      <h1>Evade</h1>
+      <button class="game-btn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen">
+      <div class="game-over-title">GAME OVER</div>
+      <div class="final-score" id="finalScore">Final Score: 0</div>
+      <div class="final-high-score" id="finalHighScore">High Score: 0</div>
+      <button class="game-btn" onclick="restartGame()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIGURATION ---
+    const MIN_BALL_SIZE = 15;
+    const MAX_BALL_SIZE = 85;
+    const PLAYER_SIZE = 15;
+    const SPEED_MULTIPLIER = 1.0;
+    const BALL_SPAWN_INTERVAL = 3000; // 3 seconds
+
+    // --- GAME STATE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let gameWidth, gameHeight;
+    let gameActive = false;
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('ballGameHighScore')) || 0;
+    let balls = [];
+    let player = { x: 0, y: 0, radius: PLAYER_SIZE };
+    let ballSpawnTimer = null;
+    let scoreTimer = null;
+    let animationId = null;
+
+    // Display saved high score on load
+    document.getElementById('highScore').textContent = `High Score: ${highScore}`;
+
+    // --- RESIZE CANVAS ---
+    function resizeCanvas() {
+      gameWidth = window.innerWidth;
+      gameHeight = window.innerHeight;
+      canvas.width = gameWidth;
+      canvas.height = gameHeight;
+      player.x = gameWidth / 2;
+      player.y = gameHeight / 2;
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- MOUSE TRACKING ---
+    canvas.addEventListener('mousemove', (e) => {
+      let x = e.clientX;
+      let y = e.clientY;
+      
+      // Keep player within bounds
+      if (x < PLAYER_SIZE) x = PLAYER_SIZE;
+      if (x > gameWidth - PLAYER_SIZE) x = gameWidth - PLAYER_SIZE;
+      if (y < PLAYER_SIZE) y = PLAYER_SIZE;
+      if (y > gameHeight - PLAYER_SIZE) y = gameHeight - PLAYER_SIZE;
+      
+      player.x = x;
+      player.y = y;
+    });
+
+    // --- BALL CLASS ---
+    class Ball {
+      constructor(x, y, radius, color, xSpeed, ySpeed) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.color = color;
+        this.xSpeed = xSpeed;
+        this.ySpeed = ySpeed;
+        this.onscreen = false;
+      }
+
+      move() {
+        if (this.isOnScreen()) {
+          this.onscreen = true;
+        }
+        
+        if (this.onscreen) {
+          this.bounce();
+        }
+        
+        this.x += this.xSpeed;
+        this.y += this.ySpeed;
+      }
+
+      bounce() {
+        if (this.x + this.radius > gameWidth) {
+          this.xSpeed = -Math.abs(this.xSpeed);
+        }
+        if (this.x - this.radius < 0) {
+          this.xSpeed = Math.abs(this.xSpeed);
+        }
+        if (this.y + this.radius > gameHeight) {
+          this.ySpeed = -Math.abs(this.ySpeed);
+        }
+        if (this.y - this.radius < 0) {
+          this.ySpeed = Math.abs(this.ySpeed);
+        }
+      }
+
+      isOnScreen() {
+        return (
+          this.x - this.radius > 0 &&
+          this.x + this.radius < gameWidth &&
+          this.y - this.radius > 0 &&
+          this.y + this.radius < gameHeight
+        );
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+
+    // --- HELPER FUNCTIONS ---
+    function randomColor() {
+      return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    }
+
+    function isCollision(ball1, ball2) {
+      const dx = ball2.x - ball1.x;
+      const dy = ball2.y - ball1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance <= (ball1.radius + ball2.radius);
+    }
+
+    function makeBall() {
+      // Size and speed are linked on a scale (small = fast, big = slow)
+      const sizeRoll = Math.random(); // 0 to 1
+      const radius = MIN_BALL_SIZE + sizeRoll * (MAX_BALL_SIZE - MIN_BALL_SIZE);
+      
+      // Speed is inverse of size: small balls are fast, big balls are slow
+      const maxSpeed = 8;
+      const minSpeed = 2;
+      const speed = (maxSpeed - sizeRoll * (maxSpeed - minSpeed)) * SPEED_MULTIPLIER;
+      
+      const side = Math.floor(Math.random() * 4) + 1;
+      let startX, startY;
+
+      if (side === 1) { // Top
+        startX = Math.random() * (gameWidth - radius * 2) + radius;
+        startY = -radius * 2;
+      } else if (side === 2) { // Right
+        startX = gameWidth + radius * 2;
+        startY = Math.random() * (gameHeight - radius * 2) + radius;
+      } else if (side === 3) { // Bottom
+        startX = Math.random() * (gameWidth - radius * 2) + radius;
+        startY = gameHeight + radius * 2;
+      } else { // Left
+        startX = -radius * 2;
+        startY = Math.random() * (gameHeight - radius * 2) + radius;
+      }
+
+      const targetX = gameWidth / 3 + Math.random() * (gameWidth / 3);
+      const targetY = gameHeight / 3 + Math.random() * (gameHeight / 3);
+
+      const dx = targetX - startX;
+      const dy = targetY - startY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const xSpeed = (dx / distance) * speed;
+      const ySpeed = (dy / distance) * speed;
+
+      balls.push(new Ball(startX, startY, radius, randomColor(), xSpeed, ySpeed));
+    }
+
+    // --- DRAWING ---
+    function drawPlayer() {
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'yellow';
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    // --- GAME LOOP ---
+    function gameLoop() {
+      if (!gameActive) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, gameWidth, gameHeight);
+
+      // Move and draw balls
+      for (let ball of balls) {
+        ball.move();
+        ball.draw();
+
+        // Check collision with player
+        if (isCollision(player, ball)) {
+          gameOver();
+          return;
+        }
+      }
+
+      // Draw player on top
+      drawPlayer();
+
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    // --- SCORE TIMER ---
+    function updateScore() {
+      if (!gameActive) return;
+      score++;
+      document.getElementById('score').textContent = `Score: ${score}`;
+      scoreTimer = setTimeout(updateScore, 1000);
+    }
+
+    // --- BALL SPAWNER ---
+    function spawnBalls() {
+      if (!gameActive) return;
+      makeBall();
+      ballSpawnTimer = setTimeout(spawnBalls, BALL_SPAWN_INTERVAL);
+    }
+
+    // --- GAME CONTROLS ---
+    function startGame() {
+      document.getElementById('startScreen').style.display = 'none';
+      gameActive = true;
+      score = 0;
+      balls = [];
+      document.getElementById('score').textContent = 'Score: 0';
+      
+      makeBall();
+      gameLoop();
+      scoreTimer = setTimeout(updateScore, 1000);
+      ballSpawnTimer = setTimeout(spawnBalls, BALL_SPAWN_INTERVAL);
+    }
+
+    function gameOver() {
+      gameActive = false;
+      
+      if (ballSpawnTimer) clearTimeout(ballSpawnTimer);
+      if (scoreTimer) clearTimeout(scoreTimer);
+      if (animationId) cancelAnimationFrame(animationId);
+
+      // Check for new high score
+      let isNewHighScore = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('ballGameHighScore', highScore);
+        document.getElementById('highScore').textContent = `High Score: ${highScore}`;
+        isNewHighScore = true;
+      }
+
+      // Build game over message
+      let gameOverHTML = '';
+      if (isNewHighScore) {
+        gameOverHTML = '<div class="new-high-score">🎉 NEW HIGH SCORE! 🎉</div>';
+      }
+      gameOverHTML += `Final Score: ${score}`;
+      
+      document.getElementById('finalScore').innerHTML = gameOverHTML;
+      document.getElementById('finalHighScore').textContent = `High Score: ${highScore}`;
+      document.getElementById('gameOverScreen').style.display = 'flex';
+    }
+
+    function restartGame() {
+      document.getElementById('gameOverScreen').style.display = 'none';
+      startGame();
+    }
+  </script>
+</body>
+</html>
