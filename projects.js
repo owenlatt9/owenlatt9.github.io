@@ -12,12 +12,12 @@ const projects = [
   },
   {
     title: "Evade",
-    description: "A survival game where you control a ball with your cursor and dodge increasingly chaotic bouncing balls. Features size-speed scaling (big balls are slow, small balls are fast), local high score tracking, and progressively harder gameplay as the screen fills up.",
-    tags: ["JavaScript", "HTML Canvas", "CSS", "Game Development"],
+    description: "A survival game where you control a ball with your cursor and dodge increasingly chaotic bouncing balls. Features size-speed scaling (big balls are slow, small balls are fast), local high score tracking, and progressively harder gameplay as the screen fills up. I remembered playing a game like this when I was little so I tried to recreate it just for fun. I made it a while back but then just recently uploaded it so it can be played online.",
+    tags: ["JavaScript", "HTML Canvas", "CSS", "Game Development", "Python",],
     demo: "game.html",
     source: "https://github.com/owenlatt9/evade",
     featured: true
-  },
+  } /*,
   {
     title: "Project Three",
     description: "A personal project, hackathon submission, or class project that showcases different skills.",
@@ -33,7 +33,7 @@ const projects = [
     demo: null,
     source: "#",
     featured: false
-  }
+  } */
 ];
 
 // ===== RENDER FUNCTION =====
