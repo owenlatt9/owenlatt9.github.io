@@ -152,6 +152,7 @@
     const PLAYER_SIZE = 15;
     const SPEED_MULTIPLIER = 1.0;
     const BALL_SPAWN_INTERVAL = 3000; // 3 seconds
+    const TARGET_FPS = 60; // Game balanced around 60fps — speeds scale to feel the same on any monitor
 
     // --- GAME STATE ---
     const canvas = document.getElementById('gameCanvas');
@@ -165,6 +166,7 @@
     let ballSpawnTimer = null;
     let scoreTimer = null;
     let animationId = null;
+    let lastFrameTime = 0; // Tracks when the last frame rendered, used for delta time
 
     // Display saved high score on load
     document.getElementById('highScore').textContent = `High Score: ${highScore}`;
@@ -209,7 +211,9 @@
         this.onscreen = false;
       }
 
-      move() {
+      // deltaScale = how much of a "normal 60fps frame" has elapsed
+      // On a 60Hz monitor this is ~1.0, on 144Hz it's ~0.42, on 240Hz it's ~0.25
+      move(deltaScale) {
         if (this.isOnScreen()) {
           this.onscreen = true;
         }
@@ -218,8 +222,8 @@
           this.bounce();
         }
         
-        this.x += this.xSpeed;
-        this.y += this.ySpeed;
+        this.x += this.xSpeed * deltaScale;
+        this.y += this.ySpeed * deltaScale;
       }
 
       bounce() {
@@ -317,15 +321,27 @@
     }
 
     // --- GAME LOOP ---
-    function gameLoop() {
+    // requestAnimationFrame passes us a timestamp (ms since page load) automatically
+    function gameLoop(currentTime) {
       if (!gameActive) return;
+
+      // Calculate delta time — how long since the last frame
+      // If this is the first frame, pretend a normal 60fps frame just passed
+      if (lastFrameTime === 0) lastFrameTime = currentTime;
+      const deltaMs = currentTime - lastFrameTime;
+      lastFrameTime = currentTime;
+
+      // deltaScale: 1.0 means "one 60fps frame's worth of time passed"
+      // Multiplying speeds by this keeps motion consistent across refresh rates
+      // Cap at 3.0 so tab-switching doesn't teleport balls across the screen
+      const deltaScale = Math.min(deltaMs / (1000 / TARGET_FPS), 3.0);
 
       // Clear canvas
       ctx.clearRect(0, 0, gameWidth, gameHeight);
 
       // Move and draw balls
       for (let ball of balls) {
-        ball.move();
+        ball.move(deltaScale);
         ball.draw();
 
         // Check collision with player
@@ -362,10 +378,11 @@
       gameActive = true;
       score = 0;
       balls = [];
+      lastFrameTime = 0; // Reset so first-frame delta starts clean
       document.getElementById('score').textContent = 'Score: 0';
       
       makeBall();
-      gameLoop();
+      requestAnimationFrame(gameLoop);
       scoreTimer = setTimeout(updateScore, 1000);
       ballSpawnTimer = setTimeout(spawnBalls, BALL_SPAWN_INTERVAL);
     }
