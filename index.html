@@ -7,6 +7,51 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .photo-item {
+      position: relative;
+    }
+
+    .photo-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.72);
+      padding: 8px 12px;
+      transform: translateY(100%);
+      transition: transform 0.25s ease;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .photo-item:hover .photo-caption {
+      transform: translateY(0);
+    }
+
+    .photo-caption span {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .photo-caption .family-links {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .photo-caption .family-links a {
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 12px;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.35);
+      transition: color 0.15s;
+    }
+
+    .photo-caption .family-links a:hover {
+      color: #fff;
+    }
+  </style>
 </head>
 <body>
   <nav>
@@ -56,16 +101,32 @@
     <div class="photo-strip">
       <div class="photo-strip-container">
         <div class="photo-item">
-          <img src="assets/dogs2.jpg" alt="Photo 1">
+          <img src="assets/dogs2.jpg" alt="Charlie, Mochi, Winnie">
+          <div class="photo-caption">
+            <span>Charlie, Mochi, Winnie (rip) 🐾</span>
+          </div>
         </div>
         <div class="photo-item">
-          <img src="assets/fam2.JPEG" alt="Photo 2">
+          <img src="assets/fam2.JPEG" alt="My family">
+          <div class="photo-caption">
+            <span>My family</span>
+            <div class="family-links">
+              <a href="https://www.linkedin.com/in/aunglatt/" target="_blank">Dad →</a>
+              <a href="https://www.linkedin.com/in/laurellatt/" target="_blank">Sister →</a>
+            </div>
+          </div>
         </div>
         <div class="photo-item">
-          <img src="assets/friends.jpg" alt="Photo 3">
+          <img src="assets/friends.jpg" alt="My boys">
+          <div class="photo-caption">
+            <span>My boys 🇧🇷 (Rhennan, Rhauan)</span>
+          </div>
         </div>
         <div class="photo-item">
-          <img src="assets/roo2.jpg" alt="Photo 4">
+          <img src="assets/roo2.jpg" alt="Roo">
+          <div class="photo-caption">
+            <span>Roo</span>
+          </div>
         </div>
       </div>
     </div>
