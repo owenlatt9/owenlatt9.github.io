@@ -3,11 +3,11 @@
 
 const projects = [
   {
-    title: "Best Neighborhood in Pittsburgh",
-    description: "Analysis of Pittsburgh's neighborhoods using Python code and datasets necessary to determine the 'best' neighborhood based on overall metric and research within three sub-metrics; Public Safety, Parks, Public schools.",
-    tags: ["NumPy", "Jupyter", "Pandas", "Python", "Data Analysis", "MatPlotLib"],
-    demo: null,
-    source: "https://github.com/owenlatt9/BestNeighborhoodCS0010",
+    title: "SheetPlay",
+    description: "A local practice tool for musicians that runs entirely in the browser as a single HTML file. Load your own sheet music PDF and audio track, set a metronome count-in with custom BPM and time signature, and play along. Features a live beat ticker with bar counter, waveform scrubbing, an adjustable start point so the count-in hands off cleanly to the recording, and saveable presets. Everything stays client-side, so your files never leave your computer.",
+    tags: ["JavaScript", "HTML", "CSS", "PDF.js", "Web Audio API", "localStorage"],
+    demo: "sheetplay.html",
+    source: "https://github.com/owenlatt9/SheetPlay",
     featured: true
   },
   {
@@ -17,15 +17,15 @@ const projects = [
     demo: "game.html",
     source: "https://github.com/owenlatt9/evade",
     featured: true
-  } /*,
-  {
-    title: "Project Three",
-    description: "A personal project, hackathon submission, or class project that showcases different skills.",
-    tags: ["JavaScript", "HTML/CSS", "REST API"],
-    demo: "#",
-    source: "#",
-    featured: false
   },
+  {
+    title: "Best Neighborhood in Pittsburgh",
+    description: "Analysis of Pittsburgh's neighborhoods using Python code and datasets necessary to determine the 'best' neighborhood based on overall metric and research within three sub-metrics; Public Safety, Parks, Public schools.",
+    tags: ["NumPy", "Jupyter", "Pandas", "Python", "Data Analysis", "MatPlotLib"],
+    demo: null,
+    source: "https://github.com/owenlatt9/BestNeighborhoodCS0010",
+    featured: false
+  } /*,
   {
     title: "Project Four",
     description: "Room for more projects as you build them. Keep adding to your portfolio!",

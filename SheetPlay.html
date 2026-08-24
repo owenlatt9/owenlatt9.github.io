@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrumSheet — Practice Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2127;
+    --surface3: #262a32;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --muted: #7a7f8a;
+    --accent: #e8452a;
+    --accent2: #ff6b47;
+    --green: #3dd68c;
+    --amber: #f5a623;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --right-w: 380px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    background: var(--surface);
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--muted); }
+  header .spacer { flex: 1; }
+  .preset-name-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .preset-name-pill b { color: var(--text); font-weight: 700; }
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .kbd {
+    font-size: 10px;
+    font-family: var(--mono);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--muted);
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 6px var(--right-w);
+    overflow: hidden;
+  }
+
+  /* SPLITTER */
+  .splitter {
+    background: var(--border);
+    cursor: col-resize;
+    position: relative;
+  }
+  .splitter:hover, .splitter.dragging { background: var(--accent); }
+  .splitter::after {
+    content: '';
+    position: absolute;
+    inset: 0 -4px;
+  }
+
+  /* PDF PANEL */
+  .pdf-panel {
+    display: flex;
+    flex-direction: column;
+    background: #111316;
+    overflow: hidden;
+    position: relative;
+  }
+  .pdf-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .pdf-toolbar button, .ui-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-family: var(--sans);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .pdf-toolbar button:hover, .ui-btn:hover { background: var(--surface3); }
+  .ui-btn.accent { background: var(--accent); border-color: var(--accent2); color: #fff; }
+  .ui-btn.accent:hover { background: var(--accent2); }
+  .pdf-toolbar .page-info {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pdf-toolbar .spacer { flex: 1; }
+  .zoom-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .pdf-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .pdf-canvas-wrap {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    background: #111316;
+  }
+  #pdf-canvas {
+    max-width: 100%;
+    border-radius: 4px;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.6);
+    display: block;
+  }
+
+  /* CUSTOM SCROLL BAR */
+  .scroll-rail {
+    width: 30px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 8px;
+  }
+  .scroll-rail .sr-label {
+    font-size: 9px;
+    font-family: var(--mono);
+    color: var(--muted);
+    writing-mode: vertical-rl;
+    letter-spacing: 0.1em;
+  }
+  #scroll-slider {
+    flex: 1;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 6px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .drop-zone {
+    position: absolute;
+    inset: 41px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    z-index: 5;
+  }
+  .drop-zone:hover { background: rgba(255,255,255,0.02); }
+  .drop-icon {
+    width: 72px; height: 72px;
+    border: 2px dashed var(--border2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+  .drop-zone h3 { font-size: 16px; font-weight: 500; }
+  .drop-zone p { font-size: 13px; color: var(--muted); text-align: center; }
+  .drop-zone.drag-over { background: rgba(232,69,42,0.06); }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-left: 1px solid var(--border);
+  }
+
+  .panel-section { border-bottom: 1px solid var(--border); }
+  .ps-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .ps-head:hover { background: var(--surface2); }
+  .ps-head .ps-title {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+  .ps-head .chev { color: var(--muted); font-size: 10px; transition: transform 0.2s; }
+  .panel-section.collapsed .chev { transform: rotate(-90deg); }
+  .ps-body { padding: 0 16px 16px; }
+  .panel-section.collapsed .ps-body { display: none; }
+
+  /* COUNTDOWN / TRANSPORT */
+  .countdown-display {
+    font-family: var(--mono);
+    font-size: 60px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+    min-height: 62px;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.1s;
+  }
+  .countdown-display.countin { color: var(--amber); }
+  .countdown-display.playing { color: var(--green); }
+  .cd-sub {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .beat-dots { display: flex; gap: 6px; margin-bottom: 16px; }
+  .beat-dot {
+    flex: 1; height: 34px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: background 0.05s, transform 0.05s;
+    position: relative;
+  }
+  .beat-dot::after {
+    content: attr(data-n);
+    position: absolute; bottom: 3px; left: 0; right: 0;
+    text-align: center; font-family: var(--mono); font-size: 9px; color: var(--muted);
+  }
+  .beat-dot.active { background: var(--accent); border-color: var(--accent2); transform: scaleY(1.06); }
+  .beat-dot.active::after { color: rgba(255,255,255,0.75); }
+  .beat-dot.beat-1.active { background: #ff6b47; box-shadow: 0 0 14px rgba(232,69,42,0.5); }
+
+  .transport-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .btn-play {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--accent); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #fff;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .btn-play:hover { background: var(--accent2); transform: scale(1.05); }
+  .btn-stop {
+    width: 38px; height: 38px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--text);
+    transition: background 0.15s;
+  }
+  .btn-stop:hover { background: var(--surface3); }
+
+  /* GENERIC CONTROLS */
+  .ctrl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .field label {
+    display: block;
+    font-size: 9px; font-family: var(--mono); color: var(--muted);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .field input[type=number], .field select {
+    background: transparent; border: none; color: var(--text);
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+    width: 100%; outline: none;
+  }
+  .field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .field select option { background: #1e2127; }
+
+  .row {
+    display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  }
+  .row .lbl { font-size: 11px; color: var(--muted); font-family: var(--mono); min-width: 42px; }
+  .row .val { font-size: 11px; color: var(--text); font-family: var(--mono); min-width: 40px; text-align: right; }
+
+  input[type=range] {
+    flex: 1; -webkit-appearance: none; height: 4px;
+    background: var(--surface3); border-radius: 2px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+
+  /* WAVEFORM */
+  .wave-wrap {
+    position: relative;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    height: 72px;
+    overflow: hidden;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  #wave-canvas { display: block; width: 100%; height: 100%; }
+  .wave-empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+  }
+  .time-display {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    text-align: center; letter-spacing: 0.05em;
+  }
+  .audio-filename {
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  }
+  .audio-filename.loaded { color: var(--green); }
+
+  .offset-ctl { display: flex; align-items: center; gap: 6px; }
+  .offset-ctl .mini {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); cursor: pointer; font-size: 13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .offset-ctl .mini:hover { background: var(--surface3); }
+  .offset-ctl .ov { font-family: var(--mono); font-size: 11px; min-width: 46px; text-align: center; }
+
+  /* TOGGLES */
+  .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .setting-row:last-child { margin-bottom: 0; }
+  .setting-row label { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .toggle {
+    width: 36px; height: 20px; background: var(--surface3);
+    border-radius: 10px; position: relative; cursor: pointer;
+    border: 1px solid var(--border2); transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent2); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.2s;
+  }
+  .toggle.on::after { left: 18px; }
+
+  /* PRESETS */
+  .preset-save-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .preset-save-row input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 7px 10px; color: var(--text);
+    font-family: var(--sans); font-size: 12px; outline: none;
+  }
+  .preset-save-row input:focus { border-color: var(--accent); }
+  .preset-list { display: flex; flex-direction: column; gap: 6px; }
+  .preset-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .preset-item .pi-info { flex: 1; overflow: hidden; }
+  .preset-item .pi-name { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preset-item .pi-meta { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .preset-item .pi-btn {
+    background: transparent; border: 1px solid var(--border2); color: var(--text);
+    border-radius: 6px; padding: 4px 9px; font-size: 11px; cursor: pointer;
+  }
+  .preset-item .pi-btn:hover { background: var(--surface3); }
+  .preset-item .pi-btn.danger:hover { background: #401616; border-color: var(--accent); }
+  .preset-empty { font-size: 11px; color: var(--muted); font-family: var(--mono); padding: 6px 0; }
+  .storage-note { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  .click-light { width: 10px; height: 10px; border-radius: 50%; background: var(--surface3); transition: background 0.05s; }
+  .click-light.flash { background: var(--amber); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+  .hidden-input { display: none; }
+  #audio-hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DRUM<span>SHEET</span></div>
+  <div class="preset-name-pill" id="active-preset">No preset loaded</div>
+  <div class="spacer"></div>
+  <span class="hint">
+    <span class="kbd">Space</span> play &nbsp; <span class="kbd">R</span> reset &nbsp; <span class="kbd">← →</span> page &nbsp; <span class="kbd">↑ ↓</span> bpm
+  </span>
+</header>
+
+<div class="main" id="main">
+  <!-- PDF PANEL -->
+  <div class="pdf-panel" id="pdf-panel">
+    <div class="pdf-toolbar">
+      <button onclick="pdfInput.click()">📄 Load PDF</button>
+      <div class="spacer"></div>
+      <button onclick="changePage(-1)">◀</button>
+      <span class="page-info" id="page-info">— / —</span>
+      <button onclick="changePage(1)">▶</button>
+      <div class="spacer"></div>
+      <button onclick="changeZoom(-0.15)">−</button>
+      <span class="zoom-val" id="zoom-val">fit</span>
+      <button onclick="changeZoom(0.15)">+</button>
+      <button onclick="resetZoom()">fit</button>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-canvas-wrap" id="canvas-wrap">
+        <canvas id="pdf-canvas" style="display:none"></canvas>
+      </div>
+      <div class="scroll-rail">
+        <span class="sr-label">SCROLL</span>
+        <input type="range" id="scroll-slider" min="0" max="100" value="0" oninput="scrollBySlider(this.value)">
+      </div>
+    </div>
+    <div class="drop-zone" id="drop-zone" onclick="pdfInput.click()">
+      <div class="drop-icon">🥁</div>
+      <h3>Load your sheet music</h3>
+      <p>Click here or drag &amp; drop a PDF</p>
+    </div>
+  </div>
+
+  <div class="splitter" id="splitter"></div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="right-panel">
+
+    <!-- TRANSPORT -->
+    <div class="panel-section" data-key="transport">
+      <div class="ps-head" onclick="toggleSection(this)">
+        <span class="ps-title">Transport</span><span class="chev">▼</span>
+      </div>
+      <div class="ps-body">
+        <div class="countdown-display" id="countdown-display">—</div>
+        <div class="cd-sub" id="cd-sub">ready</div>
+        <div class="beat-dots" id="beat-dots"></div>
+        <div class="transport-row">
+          <button class="btn-play" id="btn-play" onclick="togglePlay()">▶</button>
+          <button class="btn-stop" onclick="stopReset()" title="Reset (R)">■</button>
+          <div style="flex:1"></div>
+          <div class="click-light" id="click-light" title="metronome click"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPO & METER -->
+    <div class="panel-section" data-key="tempo">
+      <div class="ps-head" onclick="toggleSection(this)">
+        <span class="ps-title">Tempo &amp; Meter</span><span class="chev">▼</span>
+      </div>
+      <div class="ps-body">
+        <div class="ctrl-grid">
+          <div class="field">
+            <label>BPM</label>
+            <input type="number" id="bpm-input" value="120" min="20" max="300">
+          </div>
+          <div class="field">
+            <label>Time Sig</label>
+            <select id="time-sig">
+              <option value="4">4 / 4</option>
+              <option value="3">3 / 4</option>
+              <option value="6">6 / 8</option>
+              <option value="5">5 / 4</option>
+              <option value="7">7 / 8</option>
+              <option value="2">2 / 4</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Count-in (bars)</label>
+            <input type="number" id="countdown-bars" value="1" min="0" max="8">
+          </div>
+          <div class="field">
+            <label>Subdivision</label>
+            <select id="subdiv">
+              <option value="1">quarter</option>
+              <option value="2">eighth</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIO -->
+    <div class="panel-section" data-key="audio">
+      <div class="ps-head" onclick="toggleSection(this)">
+        <span class="ps-title">Audio Track</span><span class="chev">▼</span>
+      </div>
+      <div class="ps-body">
+        <div class="wave-wrap" id="wave-wrap" onclick="seekWave(event)">
+          <canvas id="wave-canvas"></canvas>
+          <div class="wave-empty" id="wave-empty">no audio loaded</div>
+        </div>
+        <div class="time-display" id="time-display">0:00.0 / 0:00.0</div>
+        <div class="transport-row" style="margin-top:12px;">
+          <button class="ui-btn" onclick="audioInput.click()">🎵 Load Audio</button>
+          <span class="audio-filename" id="audio-filename">none</span>
+        </div>
+        <div class="row">
+          <span class="lbl">VOL</span>
+          <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.85" oninput="setVolume(this.value)">
+          <span class="val" id="vol-val">85%</span>
+        </div>
+        <div class="row">
+          <span class="lbl">START</span>
+          <div class="offset-ctl" style="flex:1; justify-content:flex-end;">
+            <button class="mini" onclick="adjustOffset(-0.05)" title="−0.05s">−</button>
+            <span class="ov" id="offset-val">0.00s</span>
+            <button class="mini" onclick="adjustOffset(0.05)" title="+0.05s">+</button>
+          </div>
+        </div>
+        <button class="ui-btn" style="width:100%; margin-top:8px;" onclick="setOffsetFromPlayhead()">⌖ Set start to playhead</button>
+        <div class="storage-note">"Start" is the moment in the track that lines up with beat 1 after the count-in. Scrub the waveform to the song's first downbeat, then click "Set start to playhead". Nudge with − / + to fine-tune by ear.</div>
+      </div>
+    </div>
+
+    <!-- METRONOME -->
+    <div class="panel-section" data-key="metro">
+      <div class="ps-head" onclick="toggleSection(this)">
+        <span class="ps-title">Metronome</span><span class="chev">▼</span>
+      </div>
+      <div class="ps-body">
+        <div class="setting-row">
+          <label>Click during song</label>
+          <div class="toggle on" id="toggle-metro" onclick="toggleMetro()"></div>
+        </div>
+        <div class="setting-row">
+          <label>Accent beat 1</label>
+          <div class="toggle on" id="toggle-accent" onclick="toggleAccent()"></div>
+        </div>
+        <div class="row" style="margin-top:0;">
+          <span class="lbl">CLICK</span>
+          <input type="range" id="click-vol" min="0" max="1" step="0.05" value="0.5" oninput="updateClickVol(this.value)">
+          <span class="val" id="click-vol-val">50%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRESETS -->
+    <div class="panel-section" data-key="presets">
+      <div class="ps-head" onclick="toggleSection(this)">
+        <span class="ps-title">Presets</span><span class="chev">▼</span>
+      </div>
+      <div class="ps-body">
+        <div class="preset-save-row">
+          <input type="text" id="preset-name" placeholder="Name this setup…">
+          <button class="ui-btn accent" onclick="savePreset()">Save</button>
+        </div>
+        <div class="preset-list" id="preset-list">
+          <div class="preset-empty">No saved presets yet.</div>
+        </div>
+        <div class="storage-note" id="storage-note"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<audio id="audio-hidden"></audio>
+<input type="file" id="pdf-input" class="hidden-input" accept=".pdf" onchange="handlePdfInput(this)">
+<input type="file" id="audio-input" class="hidden-input" accept="audio/*" onchange="handleAudioInput(this)">
+
+<script>
+/* =========================================================
+   PDF WORKER  — load as same-origin blob so it works on file://
+   ========================================================= */
+const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const workerReady = (async () => {
+  try {
+    const r = await fetch(WORKER_URL);
+    if (!r.ok) throw new Error('fetch failed');
+    const code = await r.text();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+  } catch (e) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL;
+  }
+})();
+
+/* =========================================================
+   ELEMENT REFS
+   ========================================================= */
+const pdfInput = document.getElementById('pdf-input');
+const audioInput = document.getElementById('audio-input');
+const audioEl = document.getElementById('audio-hidden');
+const bpmInput = document.getElementById('bpm-input');
+const timeSig = document.getElementById('time-sig');
+const introBars = document.getElementById('countdown-bars');
+const subdivSel = document.getElementById('subdiv');
+const cdDisplay = document.getElementById('countdown-display');
+const cdSub = document.getElementById('cd-sub');
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let pdfDoc = null, currentPage = 1, zoom = 0;          // zoom 0 = fit-to-width
+let isPlaying = false;
+let beatsPerBar = 4, bpm = 120;
+let beatIndex = 0;                                     // negative = count-in, 0 = first downbeat
+let countInBeats = 0;
+let tickerInterval = null;
+let audioLoaded = false, audioOffset = 0.0;
+let metro = true, accent = true, clickVol = 0.5;
+let audioCtx = null;
+let wavePeaks = null;
+let currentAudioBlob = null, currentPdfBlob = null;
+let currentAudioName = '', currentPdfName = '';
+
+/* =========================================================
+   BEAT DOTS
+   ========================================================= */
+function buildBeatDots() {
+  beatsPerBar = parseInt(timeSig.value);
+  const wrap = document.getElementById('beat-dots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < beatsPerBar; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot' + (i === 0 ? ' beat-1' : '');
+    d.setAttribute('data-n', i + 1);
+    wrap.appendChild(d);
+  }
+}
+function highlightBeat(idx) {
+  document.querySelectorAll('.beat-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+timeSig.addEventListener('change', () => { buildBeatDots(); if (isPlaying) restartTicker(); });
+buildBeatDots();
+
+/* =========================================================
+   PDF
+   ========================================================= */
+function handlePdfInput(input) { if (input.files[0]) openPdf(input.files[0]); }
+
+async function openPdf(file) {
+  try {
+    await workerReady;
+    currentPdfBlob = file;
+    currentPdfName = file.name;
+    const buf = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    currentPage = 1;
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('pdf-canvas').style.display = 'block';
+    renderPage(currentPage);
+  } catch (e) {
+    console.error(e);
+    alert('Could not open that PDF.\n' + (e && e.message ? e.message : '') +
+      '\n\nThe PDF engine needs an internet connection the first time it loads.');
+  }
+}
+
+async function renderPage(num) {
+  if (!pdfDoc) return;
+  const page = await pdfDoc.getPage(num);
+  const wrap = document.getElementById('canvas-wrap');
+  const availW = wrap.clientWidth - 40;
+  const v0 = page.getViewport({ scale: 1 });
+  const fitScale = availW / v0.width;
+  const scale = zoom === 0 ? fitScale : fitScale * zoom;
+  const viewport = page.getViewport({ scale });
+  const canvas = document.getElementById('pdf-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  document.getElementById('page-info').textContent = num + ' / ' + pdfDoc.numPages;
+  document.getElementById('zoom-val').textContent = zoom === 0 ? 'fit' : Math.round(zoom * 100) + '%';
+  wrap.scrollTop = 0;
+  syncScrollSlider();
+}
+function changePage(d) {
+  if (!pdfDoc) return;
+  const n = currentPage + d;
+  if (n < 1 || n > pdfDoc.numPages) return;
+  currentPage = n; renderPage(n);
+}
+function changeZoom(d) {
+  const base = zoom === 0 ? 1 : zoom;
+  zoom = Math.max(0.4, Math.min(3.0, base + d));
+  renderPage(currentPage);
+}
+function resetZoom() { zoom = 0; renderPage(currentPage); }
+
+/* custom scroll bar */
+const canvasWrap = document.getElementById('canvas-wrap');
+function scrollBySlider(v) {
+  const max = canvasWrap.scrollHeight - canvasWrap.clientHeight;
+  canvasWrap.scrollTop = (v / 100) * max;
+}
+function syncScrollSlider() {
+  const max = canvasWrap.scrollHeight - canvasWrap.clientHeight;
+  document.getElementById('scroll-slider').value = max > 0 ? (canvasWrap.scrollTop / max) * 100 : 0;
+}
+canvasWrap.addEventListener('scroll', syncScrollSlider);
+
+/* drag & drop */
+const pdfPanel = document.getElementById('pdf-panel');
+pdfPanel.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); });
+pdfPanel.addEventListener('dragleave', () => document.getElementById('drop-zone').classList.remove('drag-over'));
+pdfPanel.addEventListener('drop', e => {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') openPdf(f);
+});
+
+/* =========================================================
+   AUDIO + WAVEFORM
+   ========================================================= */
+function handleAudioInput(input) { if (input.files[0]) openAudio(input.files[0]); }
+
+async function openAudio(file) {
+  currentAudioBlob = file;
+  currentAudioName = file.name;
+  audioEl.src = URL.createObjectURL(file);
+  audioEl.load();
+  audioLoaded = true;
+  document.getElementById('audio-filename').textContent = file.name;
+  document.getElementById('audio-filename').classList.add('loaded');
+  document.getElementById('wave-empty').style.display = 'none';
+  try {
+    const buf = await file.arrayBuffer();
+    const ctx = getAudioCtx();
+    const audioBuf = await ctx.decodeAudioData(buf.slice(0));
+    computePeaks(audioBuf);
+  } catch (e) {
+    wavePeaks = null;       // fallback: flat line, seeking still works
+  }
+  drawWave();
+}
+
+function computePeaks(audioBuf) {
+  const canvas = document.getElementById('wave-canvas');
+  const w = canvas.clientWidth || 340;
+  const ch = audioBuf.getChannelData(0);
+  const block = Math.max(1, Math.floor(ch.length / w));
+  const step = Math.max(1, Math.floor(block / 200));
+  const peaks = new Float32Array(w);
+  let globalMax = 0.0001;
+  for (let x = 0; x < w; x++) {
+    let max = 0; const start = x * block;
+    for (let i = 0; i < block; i += step) {
+      const v = Math.abs(ch[start + i] || 0);
+      if (v > max) max = v;
+    }
+    peaks[x] = max;
+    if (max > globalMax) globalMax = max;
+  }
+  for (let x = 0; x < w; x++) peaks[x] = peaks[x] / globalMax;
+  wavePeaks = peaks;
+}
+
+function drawWave() {
+  const canvas = document.getElementById('wave-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height, mid = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  const dur = isFinite(audioEl.duration) ? audioEl.duration : 0;
+  const played = dur ? audioEl.currentTime / dur : 0;
+  if (wavePeaks) {
+    const n = wavePeaks.length;
+    for (let x = 0; x < w; x++) {
+      const peak = wavePeaks[Math.floor((x / w) * n)] || 0;
+      const barH = Math.max(1, peak * (h * 0.86));
+      ctx.fillStyle = (x / w) <= played ? '#e8452a' : '#3a4049';
+      ctx.fillRect(x, mid - barH / 2, 1, barH);
+    }
+  } else {
+    ctx.fillStyle = '#3a4049';
+    ctx.fillRect(0, mid - 1, w, 2);
+    ctx.fillStyle = '#e8452a';
+    ctx.fillRect(0, mid - 1, w * played, 2);
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(played * w, 0, 1.5, h);
+}
+
+function waveLoop() {
+  drawWave();
+  updateTimeDisplay();
+  if (isPlaying) requestAnimationFrame(waveLoop);
+}
+
+function seekWave(e) {
+  if (!audioLoaded || !isFinite(audioEl.duration)) return;
+  const rect = document.getElementById('wave-wrap').getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  audioEl.currentTime = ratio * audioEl.duration;
+  drawWave(); updateTimeDisplay();
+}
+
+audioEl.addEventListener('timeupdate', updateTimeDisplay);
+audioEl.addEventListener('loadedmetadata', () => { updateTimeDisplay(); drawWave(); });
+function updateTimeDisplay() {
+  const cur = audioEl.currentTime || 0;
+  const dur = isFinite(audioEl.duration) ? audioEl.duration : 0;
+  document.getElementById('time-display').textContent = fmtTime(cur) + ' / ' + fmtTime(dur);
+}
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(1).padStart(4, '0');
+  return m + ':' + sec;
+}
+function setVolume(v) { audioEl.volume = parseFloat(v); document.getElementById('vol-val').textContent = Math.round(v * 100) + '%'; }
+function adjustOffset(d) { audioOffset = Math.round((audioOffset + d) * 100) / 100; document.getElementById('offset-val').textContent = audioOffset.toFixed(2) + 's'; }
+function setOffsetFromPlayhead() {
+  if (!audioLoaded || !isFinite(audioEl.currentTime)) return;
+  audioOffset = Math.round(audioEl.currentTime * 100) / 100;
+  document.getElementById('offset-val').textContent = audioOffset.toFixed(2) + 's';
+}
+
+/* =========================================================
+   METRONOME CLICK
+   ========================================================= */
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playClick(isAccentBeat) {
+  if (!metro) return;
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value = (isAccentBeat && accent) ? 1200 : 800;
+  gain.gain.setValueAtTime(clickVol, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.07);
+  const light = document.getElementById('click-light');
+  light.classList.add('flash');
+  setTimeout(() => light.classList.remove('flash'), 80);
+}
+
+function startAudio() {
+  if (!audioLoaded) return;
+  if (audioOffset >= 0) { audioEl.currentTime = audioOffset; audioEl.play(); }
+  else { audioEl.currentTime = 0; setTimeout(() => { if (isPlaying) audioEl.play(); }, -audioOffset * 1000); }
+}
+
+/* =========================================================
+   BEAT LOOP
+   beatIndex < 0  -> count-in
+   beatIndex == 0 -> first downbeat (song starts here, shows bar 1)
+   ========================================================= */
+function startTicker() {
+  if (tickerInterval) clearInterval(tickerInterval);
+  beatsPerBar = parseInt(timeSig.value);
+  bpm = parseInt(bpmInput.value) || 120;
+  const subdiv = parseInt(subdivSel.value) || 1;
+  const msPerTick = (60000 / bpm) / subdiv;
+  countInBeats = (parseInt(introBars.value) || 0) * beatsPerBar * subdiv;
+  beatIndex = -countInBeats;
+  tickBeat();
+  tickerInterval = setInterval(tickBeat, msPerTick);
+}
+function restartTicker() { stopTickerOnly(); startTicker(); }
+function stopTickerOnly() {
+  if (tickerInterval) { clearInterval(tickerInterval); tickerInterval = null; }
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active'));
+}
+
+function tickBeat() {
+  beatsPerBar = parseInt(timeSig.value);
+  const subdiv = parseInt(subdivSel.value) || 1;
+  const beatsThisBar = beatsPerBar * subdiv;
+
+  if (beatIndex < 0) {
+    const pos = ((beatIndex % beatsThisBar) + beatsThisBar) % beatsThisBar;
+    const isDown = pos === 0;
+    if (subdiv === 1 || pos % subdiv === 0) playClick(isDown); else playClick(false);
+    highlightBeat(Math.floor(pos / subdiv));
+    cdDisplay.className = 'countdown-display countin';
+    cdDisplay.textContent = Math.floor(pos / subdiv) + 1;
+    cdSub.textContent = 'count-in';
+    beatIndex++;
+    return;
+  }
+
+  if (beatIndex === 0) startAudio();   // downbeat: song begins exactly here
+
+  const pos = beatIndex % beatsThisBar;
+  const isDown = pos === 0;
+  const bar = Math.floor(beatIndex / beatsThisBar) + 1;
+  if (subdiv === 1 || pos % subdiv === 0) playClick(isDown); else playClick(false);
+  highlightBeat(Math.floor(pos / subdiv));
+  cdDisplay.className = 'countdown-display playing';
+  cdDisplay.textContent = bar;
+  cdSub.textContent = 'bar';
+  beatIndex++;
+}
+
+/* =========================================================
+   TRANSPORT
+   ========================================================= */
+function togglePlay() { isPlaying ? pausePlayback() : startPlayback(); }
+
+function startPlayback() {
+  isPlaying = true;
+  document.getElementById('btn-play').textContent = '⏸';
+  startTicker();
+  requestAnimationFrame(waveLoop);
+}
+function pausePlayback() {
+  isPlaying = false;
+  document.getElementById('btn-play').textContent = '▶';
+  stopTickerOnly();
+  audioEl.pause();
+  cdDisplay.className = 'countdown-display';
+  cdSub.textContent = 'paused';
+  drawWave();
+}
+function stopReset() {
+  isPlaying = false;
+  document.getElementById('btn-play').textContent = '▶';
+  stopTickerOnly();
+  audioEl.pause();
+  audioEl.currentTime = 0;
+  beatIndex = 0;
+  cdDisplay.className = 'countdown-display';
+  cdDisplay.textContent = '—';
+  cdSub.textContent = 'ready';
+  drawWave(); updateTimeDisplay();
+}
+
+/* =========================================================
+   TOGGLES
+   ========================================================= */
+function toggleMetro() { metro = !metro; document.getElementById('toggle-metro').classList.toggle('on', metro); }
+function toggleAccent() { accent = !accent; document.getElementById('toggle-accent').classList.toggle('on', accent); }
+function updateClickVol(v) { clickVol = parseFloat(v); document.getElementById('click-vol-val').textContent = Math.round(v * 100) + '%'; }
+
+bpmInput.addEventListener('change', () => { bpm = parseInt(bpmInput.value) || 120; if (isPlaying) restartTicker(); });
+
+/* =========================================================
+   COLLAPSIBLE SECTIONS
+   ========================================================= */
+function toggleSection(head) { head.parentElement.classList.toggle('collapsed'); }
+
+/* =========================================================
+   SPLITTER (resize panels)
+   ========================================================= */
+(function () {
+  const splitter = document.getElementById('splitter');
+  const main = document.getElementById('main');
+  let dragging = false;
+  splitter.addEventListener('mousedown', () => { dragging = true; splitter.classList.add('dragging'); document.body.style.cursor = 'col-resize'; });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const w = Math.max(300, Math.min(640, window.innerWidth - e.clientX));
+    document.documentElement.style.setProperty('--right-w', w + 'px');
+  });
+  window.addEventListener('mouseup', () => { if (dragging) { dragging = false; splitter.classList.remove('dragging'); document.body.style.cursor = ''; if (pdfDoc && zoom === 0) renderPage(currentPage); } });
+})();
+window.addEventListener('resize', () => { if (pdfDoc && zoom === 0) renderPage(currentPage); });
+
+/* =========================================================
+   PRESETS  (IndexedDB — persists audio + pdf + settings)
+   ========================================================= */
+let db = null;
+const storageNote = document.getElementById('storage-note');
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('drumsheet', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('presets')) d.createObjectStore('presets', { keyPath: 'id' });
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+function gatherSettings() {
+  return {
+    bpm: bpmInput.value,
+    timeSig: timeSig.value,
+    introBars: introBars.value,
+    subdiv: subdivSel.value,
+    volume: document.getElementById('vol-slider').value,
+    offset: audioOffset,
+    metro, accent, clickVol,
+    audioName: currentAudioName,
+    pdfName: currentPdfName
+  };
+}
+
+async function savePreset() {
+  const nameField = document.getElementById('preset-name');
+  const name = (nameField.value || '').trim() || ('Setup ' + new Date().toLocaleString());
+  if (!db) { storageNote.textContent = 'Storage unavailable in this browser/context.'; return; }
+  const preset = {
+    id: 'p_' + Date.now(),
+    name,
+    createdAt: Date.now(),
+    settings: gatherSettings(),
+    audioBlob: currentAudioBlob || null,
+    pdfBlob: currentPdfBlob || null
+  };
+  try {
+    await idbPut(preset);
+    nameField.value = '';
+    setActivePreset(name);
+    refreshPresetList();
+  } catch (e) {
+    console.error(e);
+    storageNote.textContent = 'Could not save: ' + (e.message || e);
+  }
+}
+
+function idbPut(preset) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('presets', 'readwrite');
+    tx.objectStore('presets').put(preset);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+function idbGetAll() {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('presets', 'readonly');
+    const req = tx.objectStore('presets').getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror = e => rej(e.target.error);
+  });
+}
+function idbGet(id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('presets', 'readonly');
+    const req = tx.objectStore('presets').get(id);
+    req.onsuccess = () => res(req.result);
+    req.onerror = e => rej(e.target.error);
+  });
+}
+function idbDelete(id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction('presets', 'readwrite');
+    tx.objectStore('presets').delete(id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+
+async function refreshPresetList() {
+  const list = document.getElementById('preset-list');
+  if (!db) { list.innerHTML = '<div class="preset-empty">Storage unavailable here.</div>'; return; }
+  const presets = (await idbGetAll()).sort((a, b) => b.createdAt - a.createdAt);
+  if (!presets.length) { list.innerHTML = '<div class="preset-empty">No saved presets yet.</div>'; return; }
+  list.innerHTML = '';
+  presets.forEach(p => {
+    const has = [];
+    if (p.audioBlob) has.push('audio');
+    if (p.pdfBlob) has.push('pdf');
+    const item = document.createElement('div');
+    item.className = 'preset-item';
+    item.innerHTML =
+      '<div class="pi-info"><div class="pi-name"></div>' +
+      '<div class="pi-meta">' + p.settings.bpm + ' bpm · ' + p.settings.timeSig + '/4' +
+      (has.length ? ' · ' + has.join('+') : '') + '</div></div>' +
+      '<button class="pi-btn">Load</button>' +
+      '<button class="pi-btn danger">✕</button>';
+    item.querySelector('.pi-name').textContent = p.name;
+    const btns = item.querySelectorAll('.pi-btn');
+    btns[0].onclick = () => loadPreset(p.id);
+    btns[1].onclick = () => deletePreset(p.id);
+    list.appendChild(item);
+  });
+}
+
+async function loadPreset(id) {
+  const p = await idbGet(id);
+  if (!p) return;
+  const s = p.settings;
+  bpmInput.value = s.bpm; bpm = parseInt(s.bpm) || 120;
+  timeSig.value = s.timeSig;
+  introBars.value = s.introBars;
+  subdivSel.value = s.subdiv || '1';
+  document.getElementById('vol-slider').value = s.volume; setVolume(s.volume);
+  audioOffset = s.offset || 0; document.getElementById('offset-val').textContent = audioOffset.toFixed(2) + 's';
+  metro = s.metro; document.getElementById('toggle-metro').classList.toggle('on', metro);
+  accent = s.accent; document.getElementById('toggle-accent').classList.toggle('on', accent);
+  clickVol = s.clickVol; document.getElementById('click-vol').value = clickVol; document.getElementById('click-vol-val').textContent = Math.round(clickVol * 100) + '%';
+  buildBeatDots();
+
+  if (p.audioBlob) await openAudio(p.audioBlob.name ? p.audioBlob : new File([p.audioBlob], s.audioName || 'audio'));
+  else { audioLoaded = false; audioEl.removeAttribute('src'); wavePeaks = null; document.getElementById('audio-filename').textContent = 'none'; document.getElementById('audio-filename').classList.remove('loaded'); document.getElementById('wave-empty').style.display = 'flex'; drawWave(); }
+
+  if (p.pdfBlob) await openPdf(p.pdfBlob.name ? p.pdfBlob : new File([p.pdfBlob], s.pdfName || 'sheet.pdf'));
+
+  setActivePreset(p.name);
+  stopReset();
+}
+
+async function deletePreset(id) {
+  await idbDelete(id);
+  refreshPresetList();
+}
+
+function setActivePreset(name) {
+  document.getElementById('active-preset').innerHTML = 'Preset: <b></b>';
+  document.querySelector('#active-preset b').textContent = name;
+}
+
+(async () => {
+  try {
+    db = await openDB();
+    storageNote.textContent = 'Presets (with audio + PDF) are saved in this browser. Most reliable in Chrome when running locally.';
+    refreshPresetList();
+  } catch (e) {
+    db = null;
+    storageNote.textContent = 'This browser blocked local storage on file:// — open in Chrome, or run a small local server, to save presets.';
+  }
+})();
+
+/* =========================================================
+   KEYBOARD
+   ========================================================= */
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+  switch (e.code) {
+    case 'Space': e.preventDefault(); togglePlay(); break;
+    case 'KeyR': stopReset(); break;
+    case 'ArrowLeft': e.preventDefault(); changePage(-1); break;
+    case 'ArrowRight': e.preventDefault(); changePage(1); break;
+    case 'ArrowUp': e.preventDefault(); bpmInput.value = Math.min(300, (parseInt(bpmInput.value) || 120) + 1); bpm = parseInt(bpmInput.value); if (isPlaying) restartTicker(); break;
+    case 'ArrowDown': e.preventDefault(); bpmInput.value = Math.max(20, (parseInt(bpmInput.value) || 120) - 1); bpm = parseInt(bpmInput.value); if (isPlaying) restartTicker(); break;
+  }
+});
+</script>
+</body>
+</html>
