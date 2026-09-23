@@ -822,3 +822,100 @@ footer {
   .about-grid { grid-template-columns: 1fr; }
   nav ul { gap: 1.5rem; }
 }
+
+/* Floating Music Icon */
+.music-trigger-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 75px;
+  height: 90px;
+  z-index: 50;
+}
+.music-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 75px;
+  height: 75px;
+  cursor: pointer;
+  font-size: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  animation: music-float 3s ease-in-out infinite, music-glow 2s ease-in-out infinite;
+  text-decoration: none;
+}
+.music-trigger:hover {
+  animation: music-wobble 0.5s ease-in-out, music-glow 1s ease-in-out infinite;
+  transform: rotate(15deg) scale(1.15);
+}
+@keyframes music-float {
+  0%, 100% { transform: translateY(0) rotate(8deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+@keyframes music-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgb(240, 83, 138));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgb(240, 83, 138)) drop-shadow(0 0 40px rgb(197, 232, 90));
+  }
+}
+@keyframes music-wobble {
+  0%, 100% { transform: rotate(0deg) scale(1.1); }
+  25% { transform: rotate(10deg) scale(1.1); }
+  75% { transform: rotate(-10deg) scale(1.1); }
+}
+.music-trigger-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  animation: music-shadow-pulse 3s ease-in-out infinite;
+}
+@keyframes music-shadow-pulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0.15;
+  }
+}
+.music-trigger-tooltip {
+  position: absolute;
+  top: 37px;
+  right: 85px;
+  white-space: nowrap;
+  background: #1C1F26;
+  color: #EDEAE2;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translate(8px, -50%);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.music-trigger-tooltip::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px 0 5px 5px;
+  border-style: solid;
+  border-color: transparent transparent transparent #1C1F26;
+}
+.music-trigger-container:hover .music-trigger-tooltip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
