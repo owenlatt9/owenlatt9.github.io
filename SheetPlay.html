@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DrumSheet — Practice Tool</title>
+<title>SheetPlay — Practice Tool</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -456,7 +456,7 @@
 <body>
 
 <header>
-  <div class="logo">DRUM<span>SHEET</span></div>
+  <div class="logo">SHEET<span>PLAY</span></div>
   <div class="preset-name-pill" id="active-preset">No preset loaded</div>
   <div class="spacer"></div>
   <span class="hint">
@@ -585,6 +585,11 @@
         </div>
         <button class="ui-btn" style="width:100%; margin-top:8px;" onclick="setOffsetFromPlayhead()">⌖ Set start to playhead</button>
         <div class="storage-note">"Start" is the moment in the track that lines up with beat 1 after the count-in. Scrub the waveform to the song's first downbeat, then click "Set start to playhead". Nudge with − / + to fine-tune by ear.</div>
+        <div class="setting-row" style="margin-top:14px;">
+          <label>Hear intro during count-in</label>
+          <div class="toggle" id="toggle-hearintro" onclick="toggleHearIntro()"></div>
+        </div>
+        <div class="storage-note">When on, the audio before your start point plays <em>during</em> the count-in clicks, so you hear the intro and arrive right on your entrance. Make the count-in long enough to cover the intro you want to hear.</div>
       </div>
     </div>
 
@@ -674,6 +679,7 @@ let countInBeats = 0;
 let tickerInterval = null;
 let audioLoaded = false, audioOffset = 0.0;
 let metro = true, accent = true, clickVol = 0.5;
+let hearIntro = false, suppressDownbeatAudio = false;
 let audioCtx = null;
 let wavePeaks = null;
 let currentAudioBlob = null, currentPdfBlob = null;
@@ -927,8 +933,25 @@ function startTicker() {
   bpm = parseInt(bpmInput.value) || 120;
   const subdiv = parseInt(subdivSel.value) || 1;
   const msPerTick = (60000 / bpm) / subdiv;
-  countInBeats = (parseInt(introBars.value) || 0) * beatsPerBar * subdiv;
+  const countInBars = parseInt(introBars.value) || 0;
+  countInBeats = countInBars * beatsPerBar * subdiv;
   beatIndex = -countInBeats;
+
+  // If "hear intro" is on, begin the audio early so the part before the
+  // start point plays underneath the count-in and lands on the start point
+  // exactly at the downbeat.
+  suppressDownbeatAudio = false;
+  if (hearIntro && audioLoaded && audioOffset > 0 && countInBeats > 0) {
+    const countInDur = countInBars * beatsPerBar * (60 / bpm); // seconds
+    let audioFromTime, delayMs;
+    if (audioOffset >= countInDur) { audioFromTime = audioOffset - countInDur; delayMs = 0; }
+    else { audioFromTime = 0; delayMs = (countInDur - audioOffset) * 1000; }
+    audioEl.currentTime = audioFromTime;
+    if (delayMs <= 0) audioEl.play();
+    else setTimeout(() => { if (isPlaying) audioEl.play(); }, delayMs);
+    suppressDownbeatAudio = true;
+  }
+
   tickBeat();
   tickerInterval = setInterval(tickBeat, msPerTick);
 }
@@ -955,7 +978,7 @@ function tickBeat() {
     return;
   }
 
-  if (beatIndex === 0) startAudio();   // downbeat: song begins exactly here
+  if (beatIndex === 0 && !suppressDownbeatAudio) startAudio();   // downbeat: song begins exactly here
 
   const pos = beatIndex % beatsThisBar;
   const isDown = pos === 0;
@@ -1007,6 +1030,7 @@ function stopReset() {
 function toggleMetro() { metro = !metro; document.getElementById('toggle-metro').classList.toggle('on', metro); }
 function toggleAccent() { accent = !accent; document.getElementById('toggle-accent').classList.toggle('on', accent); }
 function updateClickVol(v) { clickVol = parseFloat(v); document.getElementById('click-vol-val').textContent = Math.round(v * 100) + '%'; }
+function toggleHearIntro() { hearIntro = !hearIntro; document.getElementById('toggle-hearintro').classList.toggle('on', hearIntro); }
 
 bpmInput.addEventListener('change', () => { bpm = parseInt(bpmInput.value) || 120; if (isPlaying) restartTicker(); });
 
@@ -1058,7 +1082,7 @@ function gatherSettings() {
     subdiv: subdivSel.value,
     volume: document.getElementById('vol-slider').value,
     offset: audioOffset,
-    metro, accent, clickVol,
+    metro, accent, clickVol, hearIntro,
     audioName: currentAudioName,
     pdfName: currentPdfName
   };
@@ -1156,6 +1180,7 @@ async function loadPreset(id) {
   audioOffset = s.offset || 0; document.getElementById('offset-val').textContent = audioOffset.toFixed(2) + 's';
   metro = s.metro; document.getElementById('toggle-metro').classList.toggle('on', metro);
   accent = s.accent; document.getElementById('toggle-accent').classList.toggle('on', accent);
+  hearIntro = !!s.hearIntro; document.getElementById('toggle-hearintro').classList.toggle('on', hearIntro);
   clickVol = s.clickVol; document.getElementById('click-vol').value = clickVol; document.getElementById('click-vol-val').textContent = Math.round(clickVol * 100) + '%';
   buildBeatDots();
 
