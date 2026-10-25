@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    /* Set the theme before first paint so there's no white flash.
+       Must stay inline and stay here in <head>. Dark is the default. */
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        document.documentElement.setAttribute('data-theme', saved || 'dark');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 </head>
 <body>
   <nav>
@@ -15,8 +27,24 @@
       <li><a href="about.html">About</a></li>
       <li><a href="projects.html" class="active">Projects</a></li>
       <li><a href="contact.html">Contact</a></li>
+      <li>
+        <button class="theme-toggle" id="themeToggle" type="button"
+                aria-label="Switch between light and dark theme">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+        </button>
+      </li>
     </ul>
   </nav>
+  <!--Bit Field-->
+  <div class="bit-field" id="bitField" aria-hidden="true"></div>
 
   <div class="container">
     <div class="page-header">
@@ -33,10 +61,6 @@
     <p>© 2026 Owen Latt</p>
   </footer>
 
-  <script src="projects.js"></script>
-  <script>
-    renderProjects('all-projects', false);
-  </script>
   <!-- Floating Game Icon -->
   <div class="game-trigger-container">
     <a href="game.html" target="_blank" class="game-trigger">🛸</a>
@@ -53,5 +77,7 @@
   <script>
     renderProjects('all-projects', false);
   </script>
+  <script src="theme.js" defer></script>
+  <script src="bitfield.js" defer></script>
 </body>
 </html>
