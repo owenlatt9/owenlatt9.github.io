@@ -60,7 +60,7 @@
           </p>
 
           <div class="quick-links">
-            <a href="assets/resume.pdf" class="quick-link" title="Download Resume">
+            <a href="assets/Owen_Resume_Final.pdf" class="quick-link" title="Download Resume">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
               Resume
             </a>
@@ -78,10 +78,6 @@
             </a>
           </div>
 
-          <div class="np-wrap">
-            <div id="nowPlaying" hidden></div>
-          </div>
-
           <div class="hero-cta">
             <a href="projects.html" class="btn-primary">View Projects</a>
             <a href="about.html" class="btn-secondary">About Me</a>
@@ -89,6 +85,13 @@
         </div>
         <img src="assets/profile4.JPEG" alt="Owen Latt" class="profile-img">
       </div>
+      <!-- Music station: now playing + monthly top albums (Last.fm) -->
+      <section class="music-station" id="musicStation" hidden aria-label="What I'm listening to">
+        <div class="ms-row">
+          <div id="npSlot"></div>
+          <div id="albumSlot"></div>
+        </div>
+      </section>
     </div>
 
     <!-- Photo Gallery Strip -->
@@ -216,7 +219,7 @@
 
   <script src="theme.js" defer></script>
   <script src="bitfield.js" defer></script>
-  <script src="nowplaying.js" defer></script>
+  <script src="music-station.js" defer></script>
   <script src="projects.js"></script>
   <script>
     renderProjects('featured-projects', true);

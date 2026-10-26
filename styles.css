@@ -240,6 +240,12 @@ nav a:hover, nav a.active { color: var(--ink); }
   flex-direction: column;
   justify-content: center;
   padding-top: 80px;
+  padding-bottom: 2rem;
+}
+
+/* short screens: let the hero grow rather than crushing its contents */
+@media (max-height: 760px) {
+  .hero { min-height: auto; padding-top: 120px; }
 }
 
 .hero-content {
@@ -943,42 +949,34 @@ button:focus-visible {
 }
 
 /* ============================================================
-   NOW PLAYING (Last.fm)
+   MUSIC STATION (Last.fm)
+   now playing + weekly top albums, side by side
    ============================================================ */
 
-#nowPlaying[hidden] { display: none; }
+#musicStation[hidden] { display: none; }
 
-.np-wrap { margin-bottom: 1.5rem; }
-
-.np-fallback {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(145deg, var(--pitt-blue), #2b6fd6);
-  color: #fff;
-  font-weight: 600;
-  width: 100%;
-  height: 100%;
+.music-station {
+  margin-top: 2.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--line);
+  text-align: center;
 }
 
-.np-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ink-faint);
-  flex: 0 0 auto;
+.ms-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
 
-.is-live .np-dot {
-  background: var(--live);
-  animation: np-pulse 1.8s ease-in-out infinite;
+/* divider only exists when there are albums to divide from */
+.music-station.has-albums #npSlot {
+  padding-right: 2rem;
+  border-right: 1px solid var(--line-strong);
 }
 
-@keyframes np-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.45; transform: scale(0.82); }
-}
-
-/* ---------- variant: record ---------- */
+/* ---------- now playing ---------- */
 
 .np-record {
   display: inline-flex;
@@ -991,8 +989,8 @@ button:focus-visible {
 
 .np-disc {
   position: relative;
-  width: 92px;
-  height: 92px;
+  width: 96px;
+  height: 96px;
   flex: 0 0 auto;
   border-radius: 50%;
   overflow: hidden;
@@ -1031,7 +1029,7 @@ button:focus-visible {
     radial-gradient(circle at 50% 50%, transparent 72%, rgba(0, 0, 0, 0.35) 100%);
 }
 
-.np-meta { min-width: 0; display: block; }
+.np-meta { min-width: 0; display: block; text-align: left; }
 
 .np-badge {
   display: inline-flex;
@@ -1043,100 +1041,170 @@ button:focus-visible {
   margin-bottom: 0.25rem;
 }
 
+.np-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  flex: 0 0 auto;
+}
+
+.is-live .np-dot {
+  background: var(--live);
+  animation: np-pulse 1.8s ease-in-out infinite;
+}
+
 .is-live .np-badge { color: var(--live); }
 
+@keyframes np-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+
 .np-track,
-.np-artist,
-.np-album {
+.np-artist {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 340px;
+  max-width: 260px;
 }
 
 .np-track { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
 .np-artist { font-size: 0.9rem; color: var(--ink-soft); }
-.np-album { font-size: 0.8rem; color: var(--ink-faint); margin-top: 0.1rem; }
 
 .np-record:hover .np-track { text-decoration: underline; }
-
-/* ---------- variant: strip ---------- */
-
-.np-strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.45rem 0.95rem 0.45rem 0.5rem;
-  background: var(--panel);
-  border: 1.5px solid var(--line-strong);
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--ink);
-  max-width: 100%;
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+/* idle state — reads as "stopped" without a clock */
+.np-record:not(.is-live) .np-disc {
+  filter: saturate(0.72);
+  opacity: 0.92;
 }
 
-.np-strip:hover,
-.np-strip:focus-visible {
-  border-color: var(--ink);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.np-strip img,
-.np-strip .np-fallback {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  object-fit: cover;
-  font-size: 13px;
-}
-
-.np-strip .np-text { min-width: 0; font-size: 0.84rem; line-height: 1.3; }
-
-.np-strip .np-text b,
-.np-strip .np-text span {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-
-.np-strip .np-text b { font-weight: 600; }
-.np-strip .np-text span { color: var(--ink-soft); }
-
-.np-eq {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 14px;
-  flex: 0 0 auto;
-}
-
-.np-eq i {
-  width: 3px;
-  height: 30%;
+.np-record:not(.is-live) .np-badge::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 0.1rem;
   border-radius: 1px;
   background: var(--ink-faint);
-  animation: np-eq 0.9s ease-in-out infinite;
-  animation-play-state: paused;
+  opacity: 0.8;
 }
 
-.np-strip.is-live .np-eq i {
-  background: var(--live);
-  animation-play-state: running;
+.np-fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, var(--pitt-blue), #2b6fd6);
+  color: #fff;
+  font-weight: 600;
+  width: 100%;
+  height: 100%;
 }
 
-.np-eq i:nth-child(2) { animation-delay: 0.18s; }
-.np-eq i:nth-child(3) { animation-delay: 0.36s; }
-.np-eq i:nth-child(4) { animation-delay: 0.09s; }
+/* ---------- weekly albums ---------- */
 
-@keyframes np-eq {
-  0%, 100% { height: 25%; }
-  50% { height: 100%; }
+.ms-albums-label {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 0.55rem;
+  text-align: center;
+}
+
+.ms-albums {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ms-album {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.ms-album > a {
+  display: block;
+  text-decoration: none;
+  position: relative;
+}
+
+.ms-cover {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--chip);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.ms-cover img,
+.ms-cover .np-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  font-size: 15px;
+  border-radius: 6px;
+}
+
+.ms-album > a:hover .ms-cover,
+.ms-album > a:focus-visible .ms-cover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.ms-plays {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* hover label — absolutely positioned so it never shifts the row */
+.ms-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 4px);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding: 6px 9px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 5;
+}
+
+.ms-tip b { display: block; font-weight: 600; }
+
+.ms-album:hover .ms-tip,
+.ms-album:focus-within .ms-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 /* ============================================================
@@ -1168,10 +1236,20 @@ button:focus-visible {
   }
   .photo-item { width: 160px; height: 120px; scroll-snap-align: start; }
 
-  .np-wrap { display: flex; justify-content: center; }
-  .np-record { gap: 0.9rem; }
-  .np-disc { width: 76px; height: 76px; }
-  .np-track, .np-artist, .np-album { max-width: 200px; }
+  .music-station { margin-top: 2rem; padding-top: 1.5rem; }
+  .ms-row { gap: 1.1rem; justify-content: center; }
+  .music-station.has-albums #npSlot {
+    padding-right: 0;
+    border-right: 0;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line-strong);
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .np-disc { width: 84px; height: 84px; }
+  .np-track, .np-artist { max-width: 190px; }
+  .ms-cover { width: 58px; height: 58px; }
 }
 
 /* ============================================================
